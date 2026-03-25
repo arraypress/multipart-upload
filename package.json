@@ -1,0 +1,38 @@
+{
+  "name": "@arraypress/multipart-upload",
+  "version": "1.0.0",
+  "description": "Chunked multipart upload routes for Hono + R2/S3. Server routes + client uploader.",
+  "type": "module",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.js",
+      "types": "./src/index.d.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "node --test tests/multipart-upload.test.js"
+  },
+  "keywords": [
+    "multipart",
+    "upload",
+    "chunked",
+    "r2",
+    "s3",
+    "hono",
+    "cloudflare"
+  ],
+  "author": "David Sherlock",
+  "license": "MIT",
+  "peerDependencies": {
+    "hono": "^4.12.9"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arraypress/multipart-upload"
+  }
+}
