@@ -34,5 +34,8 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/arraypress/multipart-upload"
+  },
+  "devDependencies": {
+    "hono": "^4.12.9"
   }
 }

@@ -182,6 +182,36 @@ export function createUploadRoutes(config) {
 }
 
 /**
+ * Compute the SHA-256 hash of a File using the Web Crypto API.
+ *
+ * Returns a lowercase hex string. Reads the entire file into memory,
+ * so for very large files (500MB+) this may be slow.
+ *
+ * Works in browsers, Cloudflare Workers, Node.js 18+, Deno, and Bun.
+ *
+ * @param {File|Blob|ArrayBuffer} input - The file, blob, or buffer to hash.
+ * @param {Function} [onProgress] - Optional progress callback (0-100). Called at 50% (read) and 100% (hashed).
+ * @returns {Promise<string>} Lowercase hex SHA-256 hash.
+ *
+ * @example
+ * const hash = await hashFile(fileInput.files[0]);
+ * // → 'a1b2c3d4e5f6...'
+ *
+ * @example
+ * // With progress
+ * const hash = await hashFile(file, (pct) => console.log(`${pct}%`));
+ */
+export async function hashFile(input, onProgress) {
+  const buffer = input instanceof ArrayBuffer ? input : await input.arrayBuffer();
+  if (onProgress) onProgress(50);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+  if (onProgress) onProgress(100);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/**
  * Client-side chunk upload helper.
  *
  * Splits a File into chunks and uploads via the multipart API.

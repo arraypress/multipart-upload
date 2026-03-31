@@ -39,5 +39,8 @@ export interface UploadFileParams {
 /** Create Hono routes for multipart upload. */
 export function createUploadRoutes(config: UploadConfig): Hono;
 
+/** Compute SHA-256 hash of a File/Blob/ArrayBuffer using Web Crypto API. Returns lowercase hex string. */
+export function hashFile(input: File | Blob | ArrayBuffer, onProgress?: (percent: number) => void): Promise<string>;
+
 /** Client-side chunked file upload helper. */
 export function uploadFile(params: UploadFileParams): Promise<Record<string, unknown>>;

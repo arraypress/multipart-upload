@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createUploadRoutes } from '../src/index.js';
+import { createUploadRoutes, hashFile } from '../src/index.js';
 
 // ── Mock R2 Bucket ──────────────────────────
 
@@ -177,5 +177,43 @@ describe('POST /abort', () => {
     const routes = createUploadRoutes({ bucket: (c) => c.env.BUCKET });
     const { status } = await callRoute(routes, 'POST', '/abort', {});
     assert.equal(status, 400);
+  });
+});
+
+// ── hashFile ───────────────────────────────
+
+describe('hashFile', () => {
+  it('hashes an ArrayBuffer', async () => {
+    const data = new TextEncoder().encode('hello world');
+    const hash = await hashFile(data.buffer);
+    assert.match(hash, /^[a-f0-9]{64}$/);
+    // Known SHA-256 of "hello world"
+    assert.equal(hash, 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9');
+  });
+
+  it('same input produces same hash', async () => {
+    const data = new TextEncoder().encode('test');
+    const a = await hashFile(data.buffer);
+    const b = await hashFile(new TextEncoder().encode('test').buffer);
+    assert.equal(a, b);
+  });
+
+  it('different input produces different hash', async () => {
+    const a = await hashFile(new TextEncoder().encode('aaa').buffer);
+    const b = await hashFile(new TextEncoder().encode('bbb').buffer);
+    assert.notEqual(a, b);
+  });
+
+  it('calls onProgress', async () => {
+    const progress = [];
+    const data = new TextEncoder().encode('test');
+    await hashFile(data.buffer, (pct) => progress.push(pct));
+    assert.deepEqual(progress, [50, 100]);
+  });
+
+  it('hashes a Blob', async () => {
+    const blob = new Blob(['hello world']);
+    const hash = await hashFile(blob);
+    assert.equal(hash, 'b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9');
   });
 });
