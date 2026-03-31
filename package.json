@@ -1,6 +1,6 @@
 {
   "name": "@arraypress/multipart-upload",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chunked multipart upload routes for Hono + R2/S3. Server routes + client uploader.",
   "type": "module",
   "main": "src/index.js",
