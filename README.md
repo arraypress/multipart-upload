@@ -1,8 +1,8 @@
 # @arraypress/multipart-upload
 
-Chunked multipart upload routes for Hono + R2/S3. Bypasses the Cloudflare Workers request body size limit by splitting files into parts.
+Chunked multipart upload for Hono + R2/S3. Server routes, client helper, and React hook — all in one package.
 
-Includes both server-side Hono routes and a client-side upload helper with progress tracking.
+Bypasses Cloudflare Workers request body size limits. Includes SHA-256 hashing, duplicate detection, pause/resume, and auto-retry.
 
 ## Installation
 
@@ -10,7 +10,9 @@ Includes both server-side Hono routes and a client-side upload helper with progr
 npm install @arraypress/multipart-upload
 ```
 
-Requires `hono` as a peer dependency.
+Peer dependencies (both optional):
+- `hono` — only needed for server routes
+- `react` — only needed for the React hook
 
 ## Server Usage
 
@@ -21,9 +23,8 @@ const uploadRoutes = createUploadRoutes({
   bucket: (c) => c.env.BUCKET,         // R2 bucket binding
   keyPrefix: 'products/',               // object key prefix
   auth: adminAuth(),                    // optional Hono middleware
-  onComplete: async ({ key, fileName, fileSize, mimeType, env }) => {
-    // Create DB record, assign to product, etc.
-    const fileId = await createFile(env.DB, { fileKey: key, originalName: fileName, fileSize, mimeType });
+  onComplete: async ({ key, fileName, fileSize, mimeType, hashSha256, metadata, env }) => {
+    const fileId = await createFile(env.DB, { fileKey: key, ... });
     return { fileId };  // included in response
   },
 });
@@ -31,7 +32,7 @@ const uploadRoutes = createUploadRoutes({
 app.route('/api/upload', uploadRoutes);
 ```
 
-This registers four routes:
+Registers four routes:
 
 | Route | Method | Purpose |
 |---|---|---|
@@ -40,7 +41,75 @@ This registers four routes:
 | `/complete` | POST | Finalise the upload |
 | `/abort` | POST | Cancel and clean up |
 
-## Client Usage
+## React Hook
+
+```jsx
+import { useChunkedUpload } from '@arraypress/multipart-upload/react';
+
+function MyUploader() {
+  const upload = useChunkedUpload({
+    uploadBase: '/api/upload',
+    hashCheckUrl: '/api/files/check-hash',  // null to skip dedup
+    metadata: { priceId: 42 },
+    onComplete: (result) => console.log('Uploaded:', result),
+    onError: (msg) => console.error(msg),
+  });
+
+  if (upload.state === 'idle') {
+    return <input type="file" onChange={e => upload.selectFile(e.target.files[0])} />;
+  }
+
+  return (
+    <div>
+      <p>{upload.fileName} — {upload.progress}%</p>
+      {upload.state === 'uploading' && <button onClick={upload.pause}>Pause</button>}
+      {upload.state === 'paused' && <button onClick={upload.resume}>Resume</button>}
+      {upload.state === 'duplicate' && (
+        <>
+          <p>Already exists: {upload.duplicateFile.original_name}</p>
+          <button onClick={upload.uploadAnyway}>Upload Anyway</button>
+          <button onClick={upload.reset}>Cancel</button>
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+### Hook Config
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `uploadBase` | `string` | required | Base URL of upload routes |
+| `hashCheckUrl` | `string \| null` | `null` | URL for dedup hash check |
+| `metadata` | `object` | `{}` | Extra metadata for the upload |
+| `headers` | `object` | `{}` | Additional request headers |
+| `chunkSize` | `number` | `10485760` | Chunk size in bytes (10MB) |
+| `maxRetries` | `number` | `3` | Retry attempts per chunk |
+| `autoDismissMs` | `number` | `2000` | Auto-reset after completion (0 to disable) |
+| `onComplete` | `function` | — | Callback with server response |
+| `onError` | `function` | — | Callback with error message |
+
+### Hook Return
+
+| Property | Type | Description |
+|---|---|---|
+| `state` | `UploadState` | `'idle'` `'hashing'` `'duplicate'` `'uploading'` `'paused'` `'complete'` `'error'` |
+| `progress` | `number` | 0-100 percentage |
+| `speed` | `number` | Bytes per second |
+| `fileName` | `string` | Selected file name |
+| `fileSize` | `number` | Selected file size |
+| `errorMsg` | `string` | Error message (when state is 'error') |
+| `duplicateFile` | `object \| null` | Existing file record (when state is 'duplicate') |
+| `selectFile` | `(file: File) => void` | Start the upload flow |
+| `pause` | `() => void` | Pause upload |
+| `resume` | `() => void` | Resume upload |
+| `cancel` | `() => void` | Cancel and abort |
+| `reset` | `() => void` | Reset to idle |
+| `uploadAnyway` | `() => void` | Skip dedup, upload anyway |
+| `useDuplicate` | `() => object` | Accept duplicate, return file record |
+
+## Client Helper (Vanilla JS)
 
 ```js
 import { uploadFile } from '@arraypress/multipart-upload';
@@ -49,45 +118,18 @@ const result = await uploadFile({
   file: inputElement.files[0],
   baseUrl: '/api/upload',
   headers: { 'X-Admin-Key': apiKey },
-  chunkSize: 5 * 1024 * 1024,  // 5MB (default)
-  onProgress: (percent) => {
-    progressBar.style.width = `${percent}%`;
-  },
+  onProgress: (percent) => console.log(`${percent}%`),
 });
-
-console.log(result.fileId);  // from onComplete
 ```
 
-The client helper:
-- Splits the File into chunks
-- Uploads each chunk sequentially
-- Reports progress (0-100%)
-- Automatically aborts on failure
-- Returns the complete response including `onComplete` results
+## Hash Helper
 
-## API
+```js
+import { hashFile } from '@arraypress/multipart-upload';
 
-### `createUploadRoutes(config)`
-
-Create Hono routes for multipart uploads.
-
-Config:
-- `bucket` — R2 bucket binding or function `(c) => c.env.BUCKET`
-- `keyPrefix` — Object key prefix (default `'uploads/'`)
-- `auth` — Optional Hono middleware for authentication
-- `onComplete` — Async callback after upload completes. Receives `{ key, fileName, fileSize, mimeType, hashSha256, metadata, env }`. Return value is merged into the response.
-
-### `uploadFile(params)`
-
-Client-side chunked upload helper.
-
-Params:
-- `file` — File object to upload
-- `baseUrl` — Base URL of the upload routes
-- `chunkSize` — Chunk size in bytes (default 5MB)
-- `headers` — Additional request headers (auth, etc.)
-- `metadata` — Additional metadata passed to onComplete
-- `onProgress` — Progress callback receiving percentage (0-100)
+const sha256 = await hashFile(file, (pct) => console.log(`Hashing: ${pct}%`));
+// → 'a1b2c3d4...'
+```
 
 ## License
 

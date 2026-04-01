@@ -1,7 +1,7 @@
 {
   "name": "@arraypress/multipart-upload",
   "version": "1.0.1",
-  "description": "Chunked multipart upload routes for Hono + R2/S3. Server routes + client uploader.",
+  "description": "Chunked multipart upload routes for Hono + R2/S3. Server routes + client uploader + React hook.",
   "type": "module",
   "main": "src/index.js",
   "types": "src/index.d.ts",
@@ -9,6 +9,10 @@
     ".": {
       "import": "./src/index.js",
       "types": "./src/index.d.ts"
+    },
+    "./react": {
+      "import": "./src/react.js",
+      "types": "./src/react.d.ts"
     }
   },
   "files": [
@@ -24,12 +28,21 @@
     "r2",
     "s3",
     "hono",
-    "cloudflare"
+    "cloudflare",
+    "react",
+    "hook",
+    "dedup",
+    "sha256"
   ],
   "author": "David Sherlock",
   "license": "MIT",
   "peerDependencies": {
-    "hono": "^4.12.9"
+    "hono": "^4.12.9",
+    "react": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "hono": { "optional": true },
+    "react": { "optional": true }
   },
   "repository": {
     "type": "git",
