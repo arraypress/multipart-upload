@@ -1,6 +1,6 @@
 {
   "name": "@arraypress/multipart-upload",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Chunked multipart upload routes for Hono + R2/S3. Server routes + client uploader + React hook.",
   "type": "module",
   "main": "src/index.js",
@@ -41,8 +41,12 @@
     "react": ">=18.0.0"
   },
   "peerDependenciesMeta": {
-    "hono": { "optional": true },
-    "react": { "optional": true }
+    "hono": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
   },
   "repository": {
     "type": "git",
