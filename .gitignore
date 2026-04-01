@@ -1,6 +1,1 @@
-node_modules/
-.DS_Store
-*.tgz
-.idea/
-.vscode/
-coverage/
+node_modules
