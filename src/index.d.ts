@@ -1,7 +1,7 @@
 import type { Hono, Context } from 'hono';
 
 export interface UploadConfig {
-  /** R2 bucket binding or function returning one. */
+  /** R2 bucket binding, Storage adapter, or function returning one. */
   bucket: object | ((c: Context) => object);
   /** Prefix for object keys. Default: 'uploads/' */
   keyPrefix?: string;
